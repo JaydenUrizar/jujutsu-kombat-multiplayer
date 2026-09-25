@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jujutsu Kombat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;700&family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { position: absolute; display: block; image-rendering: auto; }
+    #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #c9a24a; font: 28px Impact, sans-serif; letter-spacing: 6px; }
+  </style>
+</head>
+<body>
+  <div id="loading">LOADING CURSED ENERGY…</div>
+  <canvas id="game" width="1280" height="720"></canvas>
+  <!-- PeerJS powers online versus (WebRTC). If it fails to load, single-player is unaffected. -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/util.js?v=12"></script>
+  <script src="js/audio.js?v=12"></script>
+  <script src="js/music.js?v=12"></script>
+  <script src="js/input.js?v=12"></script>
+  <script src="js/net.js?v=12"></script>
+  <script src="js/rig.js?v=12"></script>
+  <script src="js/characters.js?v=12"></script>
+  <script src="js/vfx.js?v=12"></script>
+  <script src="js/moves.js?v=12"></script>
+  <script src="js/stages.js?v=12"></script>
+  <script src="js/fighter.js?v=12"></script>
+  <script src="js/ai.js?v=12"></script>
+  <script src="js/hud.js?v=12"></script>
+  <script src="js/game.js?v=12"></script>
+  <script src="js/menus.js?v=12"></script>
+  <script src="js/main.js?v=12"></script>
+</body>
+</html>

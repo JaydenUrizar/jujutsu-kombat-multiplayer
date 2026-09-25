@@ -1,0 +1,27 @@
+Optional custom music
+=====================
+
+Stage and menu themes already come from the bundled OST in audio/ost/. Domain themes
+use the game's original synthesized music. To override any of them, drop files in this
+folder using the exact file names below (.mp3 or .ogg). Files here win over both.
+
+  unlimited_void.mp3          Gojo's domain (Unlimited Void)
+  malevolent_shrine.mp3       Sukuna's domain (Malevolent Shrine)
+  yuji_domain.mp3             Yuji's domain
+  chimera_shadow_garden.mp3   Megumi's domain (Chimera Shadow Garden)
+  coffin_of_the_iron_mountain.mp3  Jogo's domain (Coffin of the Iron Mountain)
+  deadly_sentencing.mp3       Higuruma's domain (Deadly Sentencing; one is already bundled)
+  overtime.mp3                Nanami's ultimate (Overtime: Collapse)
+  authentic_mutual_love.mp3   Yuta's domain (one is already bundled)
+  idle_death_gamble.mp3       Hakari's domain (one is already bundled)
+  jackpot.mp3                 Hakari's Jackpot state (plays once; one is already bundled)
+
+  menu.mp3                    Title / menus
+  stage_jujutsu_high.mp3      Tokyo Jujutsu High stage
+  stage_shibuya.mp3           Shibuya Incident stage
+  stage_shinjuku.mp3          Shinjuku Showdown stage
+  stage_kyoto.mp3             Kyoto Bamboo Grove stage
+  victory.mp3                 Victory jingle (played once)
+
+Files load when you press the first key on the title screen. After adding files,
+reload the page.

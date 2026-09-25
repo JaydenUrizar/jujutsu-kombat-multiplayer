@@ -557,6 +557,7 @@ JK.Menus = (function () {
         if (button(ctx, 'HOST ROOM', W / 2 - 220, 280, 440, 56, L.sel === 0, () => { L.sel = 0; this.act(0); }, { sub: L.sel === 0 ? 'Get a room code to share' : '' })) L.sel = 0;
         if (button(ctx, 'JOIN ROOM', W / 2 - 220, 380, 440, 56, L.sel === 1, () => { L.sel = 1; this.act(1); }, { sub: L.sel === 1 ? 'Enter a friend\'s code' : '' })) L.sel = 1;
         JK.text(ctx, 'Free peer-to-peer (WebRTC). Both players need the site open.', W / 2, 490, { size: 19, font: JK.FONT_UI, color: '#9a8f88' });
+        JK.text(ctx, 'On one computer? Use two WINDOWS side by side — background tabs freeze and stall the match.', W / 2, 522, { size: 18, font: JK.FONT_UI, color: '#ffd27a' });
         hint(ctx, '↑↓ choose · ENTER confirm · ESC back');
         return;
       }
@@ -605,6 +606,7 @@ JK.Menus = (function () {
         }
         const me = isHost ? L.picks.host : L.picks.guest;
         JK.text(ctx, '← → character  ·  ↑ ↓ costume', W / 2, 230, { size: 20, font: JK.FONT_UI, color: '#aaa' });
+        if (s.remoteHidden) JK.text(ctx, "Your opponent's window is in the background — the match will hold until they return.", W / 2, 155, { size: 17, font: JK.FONT_UI, color: '#ffd24a' });
         // stage picker (host only)
         JK.text(ctx, 'STAGE', W / 2, 268, { size: 18, font: JK.FONT_UI, color: '#c9a24a', spacing: 3 });
         JK.STAGE_ORDER.forEach((id, i) => {
@@ -728,9 +730,12 @@ JK.Menus = (function () {
       g.draw(ctx);
       if (g.net) {
         const s = g.net;
-        const state = g.netStalled ? 'SYNCING…' : s.desync ? 'DESYNC DETECTED' : '';
-        JK.text(ctx, 'ROOM ' + s.code + '  ·  ' + (s.ping || '—') + ' ms' + (state ? '  ·  ' + state : ''), W - 26, 22, { size: 18, align: 'right', font: JK.FONT_UI, color: s.desync ? '#ff4050' : g.netStalled ? '#ffd24a' : 'rgba(255,255,255,0.55)' });
-        if (s.desync) JK.text(ctx, 'The match state drifted apart — results may differ between players.', W / 2, 60, { size: 20, font: JK.FONT_UI, color: '#ff4050' });
+        let state = g.netStalled ? 'SYNCING…' : '';
+        if (s.remoteHidden) state = "WAITING — OPPONENT'S WINDOW IS IN THE BACKGROUND";
+        else if (s.localHidden) state = 'PAUSED — THIS WINDOW IS IN THE BACKGROUND';
+        JK.text(ctx, 'ROOM ' + s.code + '  ·  ' + (s.ping || '—') + ' ms' + (s.desync ? '  ·  DESYNC DETECTED' : state ? '  ·  ' + state : ''), W - 26, 22, { size: 18, align: 'right', font: JK.FONT_UI, color: s.desync ? '#ff4050' : state ? '#ffd24a' : 'rgba(255,255,255,0.55)' });
+        if (s.remoteHidden) JK.text(ctx, 'The match resumes automatically when they switch back.', W / 2, 60, { size: 20, font: JK.FONT_UI, color: '#ffd24a' });
+        else if (s.desync) JK.text(ctx, 'The match state drifted apart — results may differ between players.', W / 2, 60, { size: 20, font: JK.FONT_UI, color: '#ff4050' });
       }
       if (g.paused && !M.moveList) {
         const items = g.net ? NET_PAUSE_ITEMS : PAUSE_ITEMS;

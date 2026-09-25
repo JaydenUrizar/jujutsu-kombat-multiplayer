@@ -68,7 +68,22 @@ JK.NET = (function () {
       this.onStatus = null;           // (session) => lobby refresh
       this._stallSince = 0;
       this._pingSentAt = 0;
+      // Browser tabs freeze in the background — a hidden tab cannot keep up its end of
+      // the lockstep. Both sides therefore hold the tick clock whenever EITHER window
+      // is hidden, and resume together when both are visible again (no resync needed,
+      // since tick counts only ever advance inside beginTick, which both gate equally).
+      this.localHidden = typeof document !== 'undefined' && document.hidden;
+      this.remoteHidden = false;
+      this._onVis = () => {
+        if (this.localHidden === document.hidden) return;
+        this.localHidden = document.hidden;
+        this.send({ t: 'vis', h: this.localHidden });
+      };
+      document.addEventListener('visibilitychange', this._onVis);
     }
+
+    // true while either player's window is in the background
+    get blocked() { return this.localHidden || this.remoteHidden; }
 
     on(type, fn) { this.handlers[type] = fn; }
     emit(type, msg) { if (this.handlers[type]) this.handlers[type](msg); }
@@ -108,11 +123,13 @@ JK.NET = (function () {
       conn.on('open', () => {
         this.setStatus('linked');
         this.send({ t: 'hello', v: 1 });
+        this.send({ t: 'vis', h: this.localHidden });
       });
       conn.on('data', (msg) => {
         if (!msg || typeof msg !== 'object') return;
         switch (msg.t) {
           case 'hello': this.setStatus('linked'); break;
+          case 'vis': this.remoteHidden = !!msg.h; break;
           case 'ping': this.send({ t: 'pong', ts: msg.ts }); break;
           case 'pong': this.ping = Math.round(performance.now() - msg.ts); break;
           case 'i': this.remoteQ[msg.f] = msg.m; break;
@@ -120,7 +137,10 @@ JK.NET = (function () {
             this.peerHash[msg.f] = msg.h;
             if (this.myHash[msg.f] !== undefined) this.compareHash(msg.f);
             break;
-          case 'pause': if (this.onPause) this.onPause(); break;
+          case 'pause':
+            this._stallSince = 0; // opponent paused: never treat the quiet as a dead link
+            if (this.onPause) this.onPause();
+            break;
           case 'resume': if (this.onResume) this.onResume(msg.base); break;
           case 'rematch':
             this.peerWantRematch = true;
@@ -150,15 +170,24 @@ JK.NET = (function () {
       }
     }
 
+    detach() {
+      if (this._onVis && typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', this._onVis);
+        this._onVis = null;
+      }
+    }
+
     fail(msg) {
       this.error = msg;
       this.setStatus('error');
+      this.detach();
       try { if (this.conn) this.conn.close(); } catch (e) { /* ignore */ }
       try { if (this.peer) this.peer.destroy(); } catch (e) { /* ignore */ }
     }
 
     leave() {
       this.send({ t: 'leave' });
+      this.detach();
       setTimeout(() => {
         try { if (this.conn) this.conn.close(); } catch (e) { /* ignore */ }
         try { if (this.peer) this.peer.destroy(); } catch (e) { /* ignore */ }
@@ -305,6 +334,7 @@ JK.NET = (function () {
   };
   S.destroy = function () {
     if (S.session) {
+      S.session.detach();
       try { if (S.session.conn) S.session.conn.close(); } catch (e) { /* ignore */ }
       try { if (S.session.peer) S.session.peer.destroy(); } catch (e) { /* ignore */ }
       S.session = null;

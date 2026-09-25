@@ -64,6 +64,10 @@ controls on their own machine.
   with `node tools/desync-test.mjs`.
 - **Pause:** either player can pause; resuming re-syncs both tick clocks. Leave from the
   pause menu or the results screen. Rematch requires both players to pick REMATCH.
+- **Background windows:** browsers freeze background tabs, so the match automatically
+  holds whenever either player's window is hidden and resumes when both are visible
+  again. On one computer, open the game in two **windows side by side** — background
+  *tabs* stall the fight (the lobby and HUD tell you when this happens).
 - **Fairness:** both fighters receive the same input delay. Ping shows in the top-right
   during a match. Strict corporate/school NATs without TURN relay may fail to connect — a
   home network or mobile hotspot works.

@@ -244,9 +244,14 @@
     // ------------------------------------------------------------ main update
     update() {
       // Netplay: a lockstep tick only runs once the peer's input for this frame has
-      // arrived (or the runway covers it). While paused the tick clock is frozen.
+      // arrived (or the runway covers it). While paused the tick clock is frozen, and
+      // it also holds while either player's window is hidden in the background — a
+      // hidden tab cannot keep its side of the lockstep alive, so both sides wait.
       if (this.net) {
-        if (this.paused || this.net.status !== 'fighting') return;
+        if (this.paused || this.net.status !== 'fighting' || this.net.blocked) {
+          this.net._stallSince = 0;
+          return;
+        }
         if (!this.net.beginTick(this)) { this.netStalled = true; return; }
         this.netStalled = false;
       }

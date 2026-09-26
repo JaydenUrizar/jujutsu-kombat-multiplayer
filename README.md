@@ -16,8 +16,6 @@ the small PeerJS library from a CDN; if that fails, only online versus is unavai
 
 ## Modes
 
-| Mode | What it is |
-| --- | --- |
 | **Online Versus** | Fight a friend over the internet (see *Multiplayer* below) |
 | **Local Versus** | Two players, one keyboard (see *Multiplayer* below) |
 | Arcade | Pick a sorcerer and difficulty, then beat every other sorcerer in a row for the ending |
@@ -72,7 +70,7 @@ controls on their own machine.
   during a match. Strict corporate/school NATs without TURN relay may fail to connect — a
   home network or mobile hotspot works.
 
-## Single-player game (unchanged)
+## Single-player game
 
 Every match opens with an **intro cutscene**: a pan across the stage, a close-up of each fighter
 with a name card and their line (Gojo and Sukuna speak theirs), then a VS slam. Press Enter to skip.
@@ -378,6 +376,8 @@ Higgsfield CLI logged in to rerun them.
 | `js/hud.js`, `js/menus.js` | HUD and all menu screens, including the online lobby |
 | `tools/desync-test.mjs` | Headless netplay determinism test (`node tools/desync-test.mjs`) |
 
+
+ps. none of this is even close to finished and the ui on the main menu screen is overlapping because I added multiplayer buttons to post here and didnt organize it yet, original looks better
 ---
 
 Fan-made and non-commercial. Jujutsu Kaisen and its characters belong to Gege Akutami,

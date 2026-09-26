@@ -39,6 +39,11 @@ JK.Input = (function () {
 
   const state = { held: {}, pressed: {}, menu: {}, players: [null, null] };
 
+  // On-screen touch controls (js/touch.js) feed player 1 through these.
+  const virt = {};         // buttons currently held on screen
+  const virtPressed = {};  // presses since the last frame (so quick taps still count)
+  const virtMenu = {};     // one-shot menu actions (pause, back, training keys)
+
   window.addEventListener('keydown', (e) => {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
     if (!keys[e.code]) keysPressed[e.code] = true;
@@ -47,9 +52,11 @@ JK.Input = (function () {
     if (JK.Input.onKeyCapture) JK.Input.onKeyCapture(e);
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; for (const b in virt) virt[b] = false; });
   window.addEventListener('mousedown', () => JK.Audio.init());
+  // iOS only unlocks Web Audio inside a touch gesture; touchend is the reliable one.
   window.addEventListener('touchstart', () => JK.Audio.init(), { passive: true });
+  window.addEventListener('touchend', () => JK.Audio.init(), { passive: true });
 
   // Gamepads: pad 0 drives player 1, pad 1 drives player 2.
   const PAD = { 2: 'light', 3: 'heavy', 0: 'kick', 4: 't1', 1: 't2', 5: 't3', 7: 'block', 6: 'domain', 8: 'throw', 10: 'dash', 11: 'amp' };
@@ -93,6 +100,7 @@ JK.Input = (function () {
       if (b) held[b] = true;
     }
     for (const b in padHeld[idx]) held[b] = true;
+    if (idx === 0) for (const b in virt) if (virt[b]) held[b] = true;
     // also let player 2 use a second gamepad's shared buttons even when p2 isn't "enabled" (ignored)
     for (const b of BUTTONS) {
       if (held[b] && !prevHeld[b]) pressed[b] = true;
@@ -102,6 +110,7 @@ JK.Input = (function () {
       const b = idx === 0 ? KEYMAP[code] : P2_KEYMAP[code];
       if (b && (idx === 0 || JK.Input.p2Enabled)) pressed[b] = true;
     }
+    if (idx === 0) for (const b in virtPressed) pressed[b] = true;
     return { held, pressed };
   }
 
@@ -131,6 +140,10 @@ JK.Input = (function () {
     if (kp.KeyC) m.cdToggle = true;
     for (const k of ['up', 'down', 'left', 'right']) if (padHeld[0][k] && !padMenuPrev['d' + k]) m[k] = true;
     for (const k of ['pause', 'confirm', 'back']) if (padMenu[k] && !padMenuPrev[k]) m[k] = true;
+    for (const k in virtMenu) { m[k] = true; delete virtMenu[k]; }
+    // the on-screen LIGHT button doubles as confirm, like J on the keyboard (skips intros)
+    if (virtPressed.light) m.confirm = true;
+    for (const k in virtPressed) delete virtPressed[k];
     padMenuPrev = { ...padMenu, dup: padHeld[0].up, ddown: padHeld[0].down, dleft: padHeld[0].left, dright: padHeld[0].right };
     state.menu = m;
     for (const k in keysPressed) delete keysPressed[k];
@@ -140,7 +153,15 @@ JK.Input = (function () {
     return Object.keys(state.menu).length > 0 || Object.keys(state.pressed).length > 0;
   }
 
-  const api = { state, update, anyKey, BUTTONS, p2Enabled: false, onKeyCapture: null };
+  // Touch controls: hold/release a player-1 button, or fire a one-shot menu action.
+  function setVirtual(b, down) {
+    if (down && !virt[b]) virtPressed[b] = true;
+    virt[b] = !!down;
+  }
+  function releaseVirtual() { for (const b in virt) virt[b] = false; }
+  function menuPress(k) { virtMenu[k] = true; }
+
+  const api = { state, update, anyKey, BUTTONS, p2Enabled: false, onKeyCapture: null, setVirtual, releaseVirtual, menuPress };
   return api;
 })();
 

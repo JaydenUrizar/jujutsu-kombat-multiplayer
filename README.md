@@ -14,6 +14,27 @@ Double-click `index.html`, or serve the folder with any static server, e.g.
 recommended). It has no build step and no dependencies — online play additionally loads
 the small PeerJS library from a CDN; if that fails, only online versus is unavailable.
 
+### Phones and tablets
+
+The game also runs in mobile Safari and Chrome (tuned for iPhone 15 sizes). Open it from a
+web server, since phones can't open a local `index.html`. **Landscape** gives the biggest
+picture: touch controls sit in the bottom corners and the cursed-energy meters move up under
+the health bars. In **portrait** the fight sits at the top of the screen and the controls use
+the space below it. For true fullscreen on iPhone, use Safari's *Share → Add to Home Screen*.
+
+| Touch control | Does |
+| --- | --- |
+| Left stick (touch anywhere bottom-left) | Move, jump (↑), crouch (↓). Double-tap → to dash |
+| LIGHT / HEAVY / KICK | Attacks (J / K / L). LIGHT also skips intros |
+| U / I / O | Techniques. A button dims while its technique is cooling down |
+| BLOCK | Hold to block; add ↓ on the stick for lows |
+| DASH · THROW · AMP · DOMAIN | Same as Shift · H · E · Q. DOMAIN glows when you have 3 bars |
+| Tap the round timer (portrait: PAUSE) | Pause menu, move list, restart |
+| DUMMY · RESET · CD | Training only: dummy behaviour, reset positions, cooldowns on/off |
+
+Menus are tapped directly, and every sub-screen has a **◀ BACK** button. In online versus,
+tap the code boxes to type a room code. Local versus still needs a keyboard or two gamepads.
+
 ## Modes
 
 | **Online Versus** | Fight a friend over the internet (see *Multiplayer* below) |
@@ -97,7 +118,7 @@ In a mirror match the CPU automatically wears a different costume.
 | Tech roll (when knocked down) | Shift or Space; hold ← / → to roll | L3 / R3 / RT |
 | Pause (move list, restart) | Esc or P | Start |
 
-Menus also work with the mouse.
+Menus also work with the mouse or by tapping (see *Phones and tablets*).
 
 ## Fighting system
 

@@ -79,8 +79,33 @@ JK.Menus = (function () {
     JK.text(ctx, jp, W / 2, y - 30, { size: 26, font: JK.FONT_JP, color: 'rgba(255,60,80,0.7)', spacing: 6 });
     JK.text(ctx, str, W / 2, y + 22, { size: 58, color: '#fff', stroke: '#000', strokeW: 8, spacing: 6, shadow: '#ff2040', shadowBlur: 20 });
   }
-  function hint(ctx, str) {
-    JK.text(ctx, str, W / 2, H - 24, { size: 18, font: JK.FONT_UI, color: '#9a8f88' });
+  const touching = () => !!(JK.Touch && JK.Touch.active);
+  // Bottom help line. On touch screens show the touch wording instead of key names.
+  function hint(ctx, str, touchStr = str) {
+    const s = touching() ? touchStr : str;
+    if (s) JK.text(ctx, s, W / 2, H - 24, { size: touching() ? 22 : 18, font: JK.FONT_UI, color: '#9a8f88' });
+  }
+  // Tappable/clickable BACK in the top-left corner (same as ESC).
+  function backButton(ctx) {
+    const x = 20, y = 16, w = 132, h = 46;
+    const hover = M.mouse.x > x && M.mouse.x < x + w && M.mouse.y > y && M.mouse.y < y + h;
+    M.hits.push({ x: x - 10, y: y - 10, w: w + 20, h: h + 20, fn: () => { M.backReq = true; } });
+    ctx.save();
+    JK.HUD.skewRect(ctx, x, y, w, h, 10);
+    ctx.fillStyle = hover ? 'rgba(200,30,50,0.85)' : 'rgba(10,6,10,0.75)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = hover ? '#ffd27a' : 'rgba(201,162,74,0.7)';
+    ctx.stroke();
+    ctx.restore();
+    JK.text(ctx, '◀ BACK', x + w / 2 + 5, y + h / 2 + 2, { size: 26, color: '#fff', spacing: 2 });
+  }
+  // Big ◀ ▶ arrow hit area (for paging and pickers without a keyboard)
+  function arrow(ctx, dir, cx, cy, fn, size = 54) {
+    const w = size * 1.3, h = size * 1.6;
+    const hover = M.mouse.x > cx - w / 2 && M.mouse.x < cx + w / 2 && M.mouse.y > cy - h / 2 && M.mouse.y < cy + h / 2;
+    M.hits.push({ x: cx - w / 2, y: cy - h / 2, w, h, fn });
+    JK.text(ctx, dir < 0 ? '◀' : '▶', cx, cy, { size, color: hover ? '#ffd27a' : 'rgba(255,255,255,0.8)', stroke: '#000', strokeW: 5 });
   }
   function fakeFighter(ch) { return { poses: ch.poses, st: M.t }; }
   function drawIdle(ctx, id, x, y, s, flip, opts = {}) {
@@ -131,7 +156,7 @@ JK.Menus = (function () {
       JK.text(ctx, 'JUJUTSU', 0, 20, { size: 120, color: '#fff', stroke: '#000', strokeW: 12, spacing: 10, shadow: '#ff2040', shadowBlur: 40 });
       JK.text(ctx, 'KOMBAT', 0, 118, { size: 104, color: '#ffd27a', stroke: '#000', strokeW: 12, spacing: 18, shadow: '#ff6a00', shadowBlur: 30 });
       ctx.restore();
-      if (Math.floor(t / 30) % 2 === 0) JK.text(ctx, 'PRESS ANY KEY', W / 2, 520, { size: 36, color: '#fff', stroke: '#000', strokeW: 6, spacing: 8 });
+      if (Math.floor(t / 30) % 2 === 0) JK.text(ctx, touching() ? 'TAP TO START' : 'PRESS ANY KEY', W / 2, 520, { size: 36, color: '#fff', stroke: '#000', strokeW: 6, spacing: 8 });
       hint(ctx, 'A fan-made fighting game · sounds & music are synthesized originals');
     },
   };
@@ -158,12 +183,20 @@ JK.Menus = (function () {
       const id = JK.CHAR_ORDER[Math.floor(t / 240) % JK.CHAR_ORDER.length];
       JK.drawGlow(ctx, JK.Characters[id].aura, W - 300, 450, 340, 0.4);
       drawIdle(ctx, id, W - 300, 690, 2.1, true, { glow: true });
-      JK.text(ctx, 'JUJUTSU KOMBAT', 330, 90, { size: 64, color: '#fff', stroke: '#000', strokeW: 8, spacing: 6, shadow: '#ff2040', shadowBlur: 20 });
-      JK.text(ctx, '呪術廻戦 × 格闘', 330, 140, { size: 26, font: JK.FONT_JP, color: '#ff4060' });
-      MAIN_ITEMS.forEach(([label, sub], i) => {
-        if (button(ctx, label, 90, 150 + i * 64, 440, 50, M.sel === i, () => { M.sel = i; A.sfx('confirm'); MAIN_ITEMS[i][2](); }, { size: 30, sub: M.sel === i ? sub : '' })) M.sel = i;
+      // title block sits fully above the list; the list is spaced so nothing touches
+      const lx = 90, lw = 440, cx = lx + lw / 2 + 7;
+      JK.text(ctx, 'JUJUTSU KOMBAT', cx, 60, { size: 54, color: '#fff', stroke: '#000', strokeW: 8, spacing: 6, shadow: '#ff2040', shadowBlur: 20 });
+      JK.text(ctx, '呪術廻戦 × 格闘', cx, 104, { size: 24, font: JK.FONT_JP, color: '#ff4060' });
+      const y0 = 134, bh = 48, pitch = 58;
+      MAIN_ITEMS.forEach(([label], i) => {
+        if (button(ctx, label, lx, y0 + i * pitch, lw, bh, M.sel === i, () => { M.sel = i; A.sfx('confirm'); MAIN_ITEMS[i][2](); }, { size: 30 })) M.sel = i;
       });
-      hint(ctx, '↑↓ / W S to move · ENTER / J to select · ESC back · mouse works too');
+      // the highlighted mode's description gets its own line below the list
+      const dy = y0 + MAIN_ITEMS.length * pitch + 20;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(lx + 14, dy - 20, lw - 14, 40);
+      JK.text(ctx, MAIN_ITEMS[M.sel][1], cx, dy + 1, { size: 22, font: JK.FONT_UI, color: '#ffd27a', weight: 'bold' });
+      hint(ctx, '↑↓ / W S to move · ENTER / J to select · ESC back · mouse works too', 'Tap a mode to play');
     },
   };
 
@@ -256,7 +289,7 @@ JK.Menus = (function () {
       const list = JK.COSTUMES[cur] || [{ name: 'Default' }];
       const cy = iy + 285;
       JK.text(ctx, '◀   COSTUME ' + (cost + 1) + '/' + list.length + ':  ' + list[cost].name.toUpperCase() + '   ▶', W / 2, cy, { size: 26, color: '#fff', stroke: '#000', strokeW: 5, spacing: 2 });
-      JK.text(ctx, '↑ ↓ to change costume', W / 2, cy + 26, { size: 16, font: JK.FONT_UI, color: '#aaa' });
+      JK.text(ctx, touching() ? 'tap ◀ ▶ to change costume' : '↑ ↓ to change costume', W / 2, cy + 30, { size: touching() ? 18 : 16, font: JK.FONT_UI, color: '#aaa' });
       M.hits.push({ x: W / 2 - 260, y: cy - 20, w: 80, h: 40, fn: () => this.cycle(-1) });
       M.hits.push({ x: W / 2 + 180, y: cy - 20, w: 80, h: 40, fn: () => this.cycle(1) });
       // cards
@@ -282,7 +315,8 @@ JK.Menus = (function () {
         ctx.strokeRect(x, y, cw, chh);
         JK.text(ctx, c.short, x + cw / 2, y + chh - 14, { size: 24, color: '#fff', stroke: '#000', strokeW: 5 });
       });
-      hint(ctx, '← → choose · ↑ ↓ costume · ENTER confirm · ESC back');
+      hint(ctx, '← → choose · ↑ ↓ costume · ENTER confirm · ESC back', 'Tap a fighter to preview · tap again to pick');
+      backButton(ctx);
     },
   };
   function nextSurvivalFoe() {
@@ -329,7 +363,8 @@ JK.Menus = (function () {
         wrap(ctx, desc, x + w / 2, y + 220, w - 40, 22);
         for (let k = 0; k <= i; k++) JK.text(ctx, '★', x + w / 2 - i * 16 + k * 32, y + h - 24, { size: 26, color: col });
       });
-      hint(ctx, '← → choose · ENTER confirm · ESC back');
+      hint(ctx, '← → choose · ENTER confirm · ESC back', 'Tap a difficulty');
+      backButton(ctx);
     },
   };
   function wrap(ctx, text, x, y, maxW, lh) {
@@ -379,7 +414,8 @@ JK.Menus = (function () {
         JK.text(ctx, s.name, x + w / 2, y + h - 36, { size: 30, color: on ? '#fff' : '#ccc', spacing: 2 });
         JK.text(ctx, s.jp, x + w / 2, y + h - 12, { size: 16, font: JK.FONT_JP, color: '#c9a24a' });
       });
-      hint(ctx, 'Arrows choose · ENTER confirm · ESC back');
+      hint(ctx, 'Arrows choose · ENTER confirm · ESC back', 'Tap a stage');
+      backButton(ctx);
     },
   };
 
@@ -387,7 +423,7 @@ JK.Menus = (function () {
     update() {
       if (M.t === 1) fixMirror();
       if (M.t === 1) { A.sfx('gong'); A.say(JK.Characters[M.cfg.p1].short.toLowerCase() + ' versus ' + JK.Characters[M.cfg.p2].short.toLowerCase(), { pitch: 0.5 }); }
-      if (M.t > 170 || (M.t > 40 && JK.Input.state.menu.confirm)) startGame();
+      if (M.t > 170 || (M.t > 40 && (JK.Input.state.menu.confirm || M.mouse.click))) startGame();
     },
     draw(ctx, t) {
       const c1 = JK.getCharacter(M.cfg.p1, M.cfg.c1 || 0), c2 = JK.getCharacter(M.cfg.p2, M.cfg.c2 || 0);
@@ -521,26 +557,51 @@ JK.Menus = (function () {
       if (s && s.status === 'error') { L.phase = 'error'; L.msg = s.error; JK.Input.onKeyCapture = null; return; }
       if (L.phase === 'hosting' || L.phase === 'joining') {
         if (s && s.status === 'linked') enterPicking();
-        else if (L.phase === 'joining' && inp.confirm && L.joinInput.length === 4) {
-          JK.Input.onKeyCapture = null;
-          const sess = JK.NET.newSession('guest', L.joinInput.toUpperCase());
-          wireSession(sess);
-          sess.connect();
-        }
+        else if (L.phase === 'joining' && inp.confirm) this.connectJoin();
         return;
       }
       if (L.phase === 'picking' && s) {
-        const me = s.role === 'host' ? L.picks.host : L.picks.guest;
-        const n = JK.CHAR_ORDER.length;
-        if (inp.left) { me.char = JK.CHAR_ORDER[(JK.CHAR_ORDER.indexOf(me.char) + n - 1) % n]; me.costume = 0; sendMyPick(); A.sfx('move'); }
-        if (inp.right) { me.char = JK.CHAR_ORDER[(JK.CHAR_ORDER.indexOf(me.char) + 1) % n]; me.costume = 0; sendMyPick(); A.sfx('move'); }
-        if (inp.up || inp.down) {
-          const cnt = (JK.COSTUMES[me.char] || [1]).length;
-          me.costume = (me.costume + (inp.up ? -1 : 1) + cnt) % cnt;
-          sendMyPick(); A.sfx('select');
-        }
+        if (inp.left || inp.right) this.stepChar(inp.left ? -1 : 1);
+        if (inp.up || inp.down) this.stepCostume(inp.up ? -1 : 1);
         if (s.role === 'host' && inp.confirm) this.startMatch();
       }
+    },
+    connectJoin() {
+      const L = M.lobby;
+      if (L.phase !== 'joining' || L.joinInput.length !== 4 || (JK.NET.session && JK.NET.session.status === 'connecting')) return;
+      JK.Input.onKeyCapture = null;
+      const sess = JK.NET.newSession('guest', L.joinInput.toUpperCase());
+      wireSession(sess);
+      sess.connect();
+    },
+    // Touch screens have no keyboard to type into, so ask with the system prompt.
+    // Called straight from the tap (a 'now' hit) so iOS shows its keyboard.
+    promptCode() {
+      const L = M.lobby;
+      if (L.phase !== 'joining') return;
+      const v = window.prompt('Enter the 4-letter room code', L.joinInput);
+      if (v === null) return;
+      L.joinInput = v.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 4);
+      if (L.joinInput.length === 4) { A.sfx('confirm'); this.connectJoin(); }
+    },
+    myPick() {
+      const s = JK.NET.session;
+      return s && (s.role === 'host' ? M.lobby.picks.host : M.lobby.picks.guest);
+    },
+    stepChar(d) {
+      const me = this.myPick();
+      if (!me) return;
+      const n = JK.CHAR_ORDER.length;
+      me.char = JK.CHAR_ORDER[(JK.CHAR_ORDER.indexOf(me.char) + n + d) % n];
+      me.costume = 0;
+      sendMyPick(); A.sfx('move');
+    },
+    stepCostume(d) {
+      const me = this.myPick();
+      if (!me) return;
+      const cnt = (JK.COSTUMES[me.char] || [1]).length;
+      me.costume = (me.costume + d + cnt) % cnt;
+      sendMyPick(); A.sfx('select');
     },
     draw(ctx, t) {
       const L = M.lobby;
@@ -550,26 +611,29 @@ JK.Menus = (function () {
       if (!JK.NET.supported) {
         JK.text(ctx, 'The networking library did not load (are you offline?)', W / 2, 340, { size: 26, font: JK.FONT_UI, color: '#ff5a5a' });
         JK.text(ctx, 'Single-player modes still work.', W / 2, 380, { size: 20, font: JK.FONT_UI, color: '#aaa' });
-        hint(ctx, 'ESC back');
+        hint(ctx, 'ESC back', '');
+        backButton(ctx);
         return;
       }
+      backButton(ctx);
       if (L.phase === 'idle') {
         if (button(ctx, 'HOST ROOM', W / 2 - 220, 280, 440, 56, L.sel === 0, () => { L.sel = 0; this.act(0); }, { sub: L.sel === 0 ? 'Get a room code to share' : '' })) L.sel = 0;
         if (button(ctx, 'JOIN ROOM', W / 2 - 220, 380, 440, 56, L.sel === 1, () => { L.sel = 1; this.act(1); }, { sub: L.sel === 1 ? 'Enter a friend\'s code' : '' })) L.sel = 1;
         JK.text(ctx, 'Free peer-to-peer (WebRTC). Both players need the site open.', W / 2, 490, { size: 19, font: JK.FONT_UI, color: '#9a8f88' });
         JK.text(ctx, 'On one computer? Use two WINDOWS side by side — background tabs freeze and stall the match.', W / 2, 522, { size: 18, font: JK.FONT_UI, color: '#ffd27a' });
-        hint(ctx, '↑↓ choose · ENTER confirm · ESC back');
+        hint(ctx, '↑↓ choose · ENTER confirm · ESC back', 'Tap HOST or JOIN');
         return;
       }
       if (L.phase === 'hosting') {
         JK.text(ctx, 'ROOM CODE', W / 2, 250, { size: 30, font: JK.FONT_UI, color: '#c9a24a', spacing: 4 });
         JK.text(ctx, s ? s.code : '…', W / 2, 340, { size: 110, color: '#fff', stroke: '#000', strokeW: 10, spacing: 20, shadow: '#ff2040', shadowBlur: 24 });
         JK.text(ctx, 'Share this code — waiting for your opponent' + '…'.repeat(1 + (Math.floor(t / 30) % 3)), W / 2, 430, { size: 22, font: JK.FONT_UI, color: '#9a8f88' });
-        hint(ctx, 'ESC cancel');
+        hint(ctx, 'ESC cancel', 'Tap BACK to cancel');
         return;
       }
       if (L.phase === 'joining') {
         JK.text(ctx, 'ENTER ROOM CODE', W / 2, 250, { size: 30, font: JK.FONT_UI, color: '#c9a24a', spacing: 4 });
+        M.hits.push({ x: W / 2 - 200, y: 290, w: 400, h: 130, now: touching(), fn: () => this.promptCode() });
         for (let i = 0; i < 4; i++) {
           const x = W / 2 - 190 + i * 120;
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -579,39 +643,47 @@ JK.Menus = (function () {
           ctx.strokeRect(x, 300, 96, 110);
           JK.text(ctx, L.joinInput[i] || (i === L.joinInput.length ? '_' : ''), x + 48, 358, { size: 62, color: '#fff' });
         }
-        JK.text(ctx, s && s.status === 'connecting' ? 'CONNECTING…' : 'Type the 4-letter code your friend shared', W / 2, 460, { size: 22, font: JK.FONT_UI, color: '#9a8f88' });
-        if (L.joinInput.length === 4) JK.text(ctx, 'Press ENTER to connect', W / 2, 500, { size: 24, font: JK.FONT_UI, color: '#ffd27a' });
-        hint(ctx, 'A–Z / 2–9 · ENTER connect · ESC back');
+        const connecting = s && s.status === 'connecting';
+        JK.text(ctx, connecting ? 'CONNECTING…' : touching() ? 'Tap the boxes to type the code your friend shared' : 'Type the 4-letter code your friend shared', W / 2, 460, { size: 22, font: JK.FONT_UI, color: '#9a8f88' });
+        if (L.joinInput.length === 4 && !connecting) button(ctx, 'CONNECT', W / 2 - 150, 500, 300, 54, false, () => this.connectJoin(), { size: 30 });
+        hint(ctx, 'A–Z / 2–9 · ENTER connect · ESC back', '');
         return;
       }
       if (L.phase === 'error') {
         JK.text(ctx, L.msg || 'Connection failed.', W / 2, 340, { size: 28, font: JK.FONT_UI, color: '#ff5a5a' });
-        hint(ctx, 'ESC back');
+        hint(ctx, 'ESC back', '');
         return;
       }
       if (L.phase === 'picking' && s) {
         const isHost = s.role === 'host';
         JK.text(ctx, 'ROOM ' + s.code + '  ·  LINKED', W / 2, 130, { size: 20, font: JK.FONT_UI, color: '#6fe07a', spacing: 2 });
+        // rows, top to bottom: labels + hint · fighters · names · stage cards · start / waiting
         const sides = [['host', 300, false], ['guest', W - 300, true]];
         for (const [who, x, flip] of sides) {
           const pick = L.picks[who];
           const ch = JK.getCharacter(pick.char, pick.costume || 0);
           const mine = (who === 'host') === isHost;
-          JK.drawGlow(ctx, ch.aura, x, 430, 300, mine ? 0.5 : 0.25);
-          drawIdle(ctx, pick.char, x, 560, 1.6, flip, { costume: pick.costume || 0, glow: mine });
-          JK.text(ctx, mine ? 'YOU' : 'OPPONENT', x, 180, { size: 24, font: JK.FONT_UI, color: mine ? '#ffd27a' : '#9a8f88', spacing: 3 });
-          JK.text(ctx, ch.name, x, 620, { size: 30, color: ch.color, stroke: '#000', strokeW: 5 });
+          JK.drawGlow(ctx, ch.aura, x, 360, 240, mine ? 0.5 : 0.25);
+          drawIdle(ctx, pick.char, x, 468, 1.2, flip, { costume: pick.costume || 0, glow: mine });
+          JK.text(ctx, mine ? 'YOU' : 'OPPONENT', x, 178, { size: 24, font: JK.FONT_UI, color: mine ? '#ffd27a' : '#9a8f88', spacing: 3 });
+          JK.text(ctx, ch.name, x, 494, { size: 30, color: ch.color, stroke: '#000', strokeW: 5 });
           const costumes = JK.COSTUMES[pick.char] || [{ name: 'Default' }];
-          JK.text(ctx, costumes[pick.costume || 0].name.toUpperCase(), x, 650, { size: 18, font: JK.FONT_UI, color: '#ccc' });
+          JK.text(ctx, costumes[pick.costume || 0].name.toUpperCase() + (mine ? '  ⟳' : ''), x, 522, { size: 18, font: JK.FONT_UI, color: '#ccc' });
+          if (mine) {
+            // tap targets: arrows swap fighter, the name / costume line cycles costumes
+            arrow(ctx, -1, x - 175, 360, () => this.stepChar(-1));
+            arrow(ctx, 1, x + 175, 360, () => this.stepChar(1));
+            M.hits.push({ x: x - 160, y: 476, w: 320, h: 60, fn: () => this.stepCostume(1) });
+          }
         }
-        const me = isHost ? L.picks.host : L.picks.guest;
-        JK.text(ctx, '← → character  ·  ↑ ↓ costume', W / 2, 230, { size: 20, font: JK.FONT_UI, color: '#aaa' });
+        JK.text(ctx, touching() ? 'tap ◀ ▶ for fighter  ·  tap costume to change' : '← → character  ·  ↑ ↓ costume', W / 2, 214, { size: 20, font: JK.FONT_UI, color: '#aaa' });
         if (s.remoteHidden) JK.text(ctx, "Your opponent's window is in the background — the match will hold until they return.", W / 2, 155, { size: 17, font: JK.FONT_UI, color: '#ffd24a' });
         // stage picker (host only)
-        JK.text(ctx, 'STAGE', W / 2, 268, { size: 18, font: JK.FONT_UI, color: '#c9a24a', spacing: 3 });
+        const stageTip = isHost ? (touching() ? 'tap a card' : 'click a card or press 1–4') : 'the host picks';
+        JK.text(ctx, 'STAGE  ·  ' + stageTip, W / 2, 556, { size: 18, font: JK.FONT_UI, color: '#c9a24a', spacing: 2 });
         JK.STAGE_ORDER.forEach((id, i) => {
-          const w = 200, gap = 20;
-          const x = W / 2 - (JK.STAGE_ORDER.length * w + (JK.STAGE_ORDER.length - 1) * gap) / 2 + i * (w + gap), y = 690 - 116, hh = 110;
+          const w = 170, gap = 16, n = JK.STAGE_ORDER.length;
+          const x = W / 2 - (n * w + (n - 1) * gap) / 2 + i * (w + gap), y = 570, hh = 84;
           const on = L.stageIdx === i;
           if (isHost) {
             M.hits.push({ x, y, w, h: hh, fn: () => { if (L.stageIdx !== i) { L.stageIdx = i; s.send({ t: 'stage', idx: i }); A.sfx('confirm'); } } });
@@ -622,14 +694,13 @@ JK.Menus = (function () {
           ctx.lineWidth = on ? 4 : 2;
           ctx.strokeStyle = on ? '#ffd27a' : 'rgba(201,162,74,0.5)';
           ctx.strokeRect(x, y, w, hh);
-          JK.text(ctx, JK.STAGES[id].name, x + w / 2, y + hh - 14, { size: 17, font: JK.FONT_UI, color: '#fff', stroke: '#000', strokeW: 3 });
+          JK.text(ctx, JK.STAGES[id].name, x + w / 2, y + hh - 12, { size: 15, font: JK.FONT_UI, color: '#fff', stroke: '#000', strokeW: 3 });
         });
         if (isHost) {
-          if (button(ctx, 'START MATCH', W / 2 - 150, 660, 300, 46, false, () => this.startMatch(), { size: 26 })) { /* hover */ }
-          JK.text(ctx, 'or press ENTER · stage: click a card or press 1–4', W / 2, H - 12, { size: 16, font: JK.FONT_UI, color: '#9a8f88' });
+          button(ctx, 'START MATCH', W / 2 - 150, 666, 300, 44, false, () => this.startMatch(), { size: 26 });
+          if (!touching()) JK.text(ctx, 'or ENTER', W / 2 + 230, 688, { size: 16, font: JK.FONT_UI, color: '#9a8f88' });
         } else {
-          JK.text(ctx, 'Waiting for the host to start' + '…'.repeat(1 + (Math.floor(t / 30) % 3)), W / 2, 686, { size: 22, font: JK.FONT_UI, color: '#9a8f88' });
-          hint(ctx, 'ESC leave room');
+          JK.text(ctx, 'Waiting for the host to start' + '…'.repeat(1 + (Math.floor(t / 30) % 3)) + (touching() ? '' : '   ·   ESC leave room'), W / 2, 688, { size: 22, font: JK.FONT_UI, color: '#9a8f88' });
         }
       }
     },
@@ -745,13 +816,14 @@ JK.Menus = (function () {
           if (button(ctx, label, W / 2 - 220, 230 + i * 74, 440, 54, M.sel === i, () => this.pauseAction(i), { size: 30 })) M.sel = i;
         });
       }
-      if (M.moveList) drawMoveList(ctx, g.p1.id);
+      if (M.moveList) drawMoveList(ctx, g.p1.id, true);
     },
   };
 
-  function drawMoveList(ctx, id) {
+  function drawMoveList(ctx, id, closable) {
     const ch = JK.Characters[id];
     ctx.fillStyle = 'rgba(4,2,8,0.92)'; ctx.fillRect(0, 0, W, H);
+    if (closable) M.hits.push({ x: 0, y: 0, w: W, h: H, fn: () => { M.moveList = false; A.sfx('back'); } });
     title(ctx, ch.name + ' — MOVE LIST', ch.jp, 60);
     const col = (list, x, head) => {
       JK.text(ctx, head, x, 140, { size: 30, align: 'left', color: ch.color, spacing: 3 });
@@ -763,7 +835,7 @@ JK.Menus = (function () {
     col(JK.MOVE_LIST.common, 70, 'UNIVERSAL');
     col(JK.MOVE_LIST[id], 680, 'CURSED TECHNIQUES');
     JK.text(ctx, 'Specials cancel from any normal that connects. Uppercut and the 3rd jab launch — follow up in the air.', W / 2, H - 80, { size: 20, font: JK.FONT_UI, color: '#aaa' });
-    hint(ctx, 'ESC / ENTER to close');
+    if (closable) hint(ctx, 'ESC / ENTER to close', 'Tap anywhere to close');
   }
 
   function survivalResult(res) {
@@ -855,7 +927,7 @@ JK.Menus = (function () {
       JK.text(ctx, '最強', W / 2, 120, { size: 120, font: JK.FONT_JP, color: 'rgba(255,210,120,0.9)', stroke: '#000', strokeW: 8 });
       JK.text(ctx, 'THE STRONGEST', W / 2, 220, { size: 80, color: '#fff', stroke: '#000', strokeW: 10, spacing: 10, shadow: ch.color, shadowBlur: 30 });
       JK.text(ctx, ch.name + ' has conquered every sorcerer on ' + M.cfg.difficulty.toUpperCase(), W / 2, 280, { size: 26, font: JK.FONT_UI, color: '#ffd27a', stroke: '#000', strokeW: 4 });
-      if (M.t > 90) hint(ctx, 'Press ENTER to return to the main menu');
+      if (M.t > 90) hint(ctx, 'Press ENTER to return to the main menu', 'Tap to return to the main menu');
     },
   };
 
@@ -883,13 +955,16 @@ JK.Menus = (function () {
           ['PAUSE', 'ESC / P', 'Move list, restart, quit'],
           ['GAMEPAD', 'X Y A · LB B RB', 'Light Heavy Kick · Techniques · RT block · LT domain'],
         ];
+        // touch screens: name the on-screen controls instead of keys
+        const TOUCH_KEYS = ['stick ← →', 'DASH button', 'stick ↑ ↓', 'LIGHT HEAVY KICK', 'U  I  O buttons', 'hold BLOCK', 'THROW button', 'DOMAIN button', 'tap the timer', 'or plug one in'];
         rows.forEach(([a, b, c], i) => {
+          if (touching()) b = TOUCH_KEYS[i];
           const y = 150 + i * 52;
           JK.text(ctx, a, 200, y, { size: 28, align: 'left', color: '#ff5a6a', spacing: 2 });
           JK.text(ctx, b, 480, y, { size: 28, align: 'left', color: '#ffd27a', font: JK.FONT_UI, weight: 'bold' });
           JK.text(ctx, c, 760, y, { size: 22, align: 'left', color: '#ccc', font: JK.FONT_UI });
         });
-        JK.text(ctx, 'Cursed energy builds as you fight. When a domain opens against you with 3 bars, press Q to CLASH and mash!', W / 2, H - 70, { size: 20, font: JK.FONT_UI, color: '#aaa' });
+        JK.text(ctx, 'Cursed energy builds as you fight. When a domain opens against you with 3 bars, ' + (touching() ? 'tap DOMAIN' : 'press Q') + ' to CLASH and mash!', W / 2, H - 70, { size: 20, font: JK.FONT_UI, color: '#aaa' });
       } else if (howTab === 1) {
         title(ctx, 'MOVEMENT & DEFENSE', '体術');
         const rows = [
@@ -930,7 +1005,12 @@ JK.Menus = (function () {
         });
         JK.text(ctx, 'The host picks the stage and starts the match; both players pick their own fighter and costume.', W / 2, H - 60, { size: 18, font: JK.FONT_UI, color: '#aaa' });
       } else drawMoveList(ctx, JK.CHAR_ORDER[howTab - 3]);
-      hint(ctx, '← → switch page (' + (howTab + 1) + '/' + (JK.CHAR_ORDER.length + 3) + ') · ESC back');
+      const pages = JK.CHAR_ORDER.length + 3;
+      // page arrows flank the page counter at the bottom, clear of the page content
+      arrow(ctx, -1, W / 2 - 330, H - 26, () => { howTab = (howTab + pages - 1) % pages; A.sfx('move'); }, 40);
+      arrow(ctx, 1, W / 2 + 330, H - 26, () => { howTab = (howTab + 1) % pages; A.sfx('move'); }, 40);
+      hint(ctx, '← → switch page (' + (howTab + 1) + '/' + pages + ') · ESC back', 'Tap ◀ ▶ to switch page (' + (howTab + 1) + '/' + pages + ')');
+      backButton(ctx);
     },
   };
 
@@ -982,21 +1062,25 @@ JK.Menus = (function () {
       if (OPTS[M.sel][1] === 'smooth') JK.text(ctx, 'Smooth motion blends frames on 120/144 Hz screens and smooths slow-mo. Turn off for the lowest input delay.', W / 2, H - 102, { size: 17, font: JK.FONT_UI, color: '#ffd27a' });
       JK.text(ctx, 'Anime OST: menu & stage themes + domain, Hollow Purple and Fuga voice clips. OFF = original synth score.', W / 2, H - 78, { size: 17, font: JK.FONT_UI, color: '#aaa' });
       JK.text(ctx, 'More music: drop files into music/ (see PUT_YOUR_MUSIC_HERE.txt), e.g. unlimited_void.mp3 for a domain theme.', W / 2, H - 54, { size: 17, font: JK.FONT_UI, color: '#aaa' });
-      hint(ctx, '↑↓ select · ← → adjust · ESC back');
+      hint(ctx, '↑↓ select · ← → adjust · ESC back', 'Tap to toggle · tap along a bar to set the volume');
     },
   };
 
   // --------------------------------------------------------------- frame
+  M.hitAt = function (x, y) {
+    for (const h of M.hits) if (x > h.x && x < h.x + h.w && y > h.y && y < h.y + h.h) return h;
+    return null;
+  };
   M.update = function () {
-    const inp = JK.Input.state.menu;
     M.t++;
     const s = S[M.screen];
-    // mouse click dispatch (from last frame's hit regions)
+    // mouse / tap dispatch (from last frame's hit regions)
     if (M.mouse.click) {
-      for (const h of M.hits) {
-        if (M.mouse.x > h.x && M.mouse.x < h.x + h.w && M.mouse.y > h.y && M.mouse.y < h.y + h.h) { h.fn(); break; }
-      }
+      const h = M.hitAt(M.mouse.x, M.mouse.y);
+      if (h) h.fn();
     }
+    let inp = JK.Input.state.menu;
+    if (M.backReq) { inp = { ...inp, back: true }; M.backReq = false; }
     if (s) s.update(inp);
     M.mouse.click = false;
   };

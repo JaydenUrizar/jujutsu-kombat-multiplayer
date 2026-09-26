@@ -2,6 +2,9 @@
 // In-fight HUD.
 JK.HUD = (function () {
   const W = JK.W;
+  const touch = () => !!(JK.Touch && JK.Touch.active);
+  // landscape touch controls cover the bottom corners, so the meters move up top
+  const meterTop = () => !!(JK.Touch && JK.Touch.hudTop());
 
   function skewRect(ctx, x, y, w, h, sk) {
     ctx.beginPath();
@@ -74,7 +77,7 @@ JK.HUD = (function () {
     JK.text(ctx, '呪力', flip ? x + 26 : x - 30, y + 7, { size: 20, font: JK.FONT_JP, color: '#ddd', stroke: '#000', strokeW: 4 });
     if (full) {
       const blink = 0.6 + Math.sin(t * 0.25) * 0.4;
-      JK.text(ctx, (f.ch.domain.ult ? 'ULTIMATE' : 'DOMAIN') + ' READY  [Q]', lx + (3 * (segW + gap)) / 2, y - 16, { size: 22, color: f.ch.color, stroke: '#000', strokeW: 5, alpha: blink, spacing: 2 });
+      JK.text(ctx, (f.ch.domain.ult ? 'ULTIMATE' : 'DOMAIN') + ' READY' + (touch() ? '' : '  [Q]'), lx + (3 * (segW + gap)) / 2, y - 16, { size: 22, color: f.ch.color, stroke: '#000', strokeW: 5, alpha: blink, spacing: 2 });
     }
     if (f.zoneT > 0) {
       const zx = flip ? x - 3 * (segW + gap) - 70 : x + 3 * (segW + gap) + 70;
@@ -176,8 +179,9 @@ JK.HUD = (function () {
     const diff = g.mode === 'training' ? 'TRAINING' : g.mode === 'survival' ? 'SURVIVAL · ' + (g.opts.difficulty || '').toUpperCase() : (g.opts.difficulty || '').toUpperCase();
     JK.text(ctx, diff, W / 2, BY + 58, { size: 16, color: '#c9a24a', stroke: '#000', strokeW: 3, spacing: 3 });
     // meters
-    meter(ctx, 60, JK.H - 40, p1, false, t);
-    meter(ctx, W - 60, JK.H - 40, p2, true, t);
+    const my = meterTop() ? 160 : JK.H - 40;
+    meter(ctx, 60, my, p1, false, t);
+    meter(ctx, W - 60, my, p2, true, t);
     // combo counter
     const c = g.hud.combo;
     if (c && c.hits >= 2) {
@@ -208,11 +212,11 @@ JK.HUD = (function () {
     }
     // Breaker prompt while the player is being comboed with 2 bars stocked
     if ((p1.state === 'hitstun' || p1.state === 'juggle') && p1.comboTaken >= 2 && p1.meter >= 200 && g.fighting) {
-      JK.text(ctx, 'BREAKER!  → + SPACE', 250, JK.H - 110, { size: 30, color: Math.floor(t / 5) % 2 ? '#ffffff' : p1.ch.color, stroke: '#000', strokeW: 6 });
+      JK.text(ctx, touch() ? 'BREAKER!  → + BLOCK' : 'BREAKER!  → + SPACE', meterTop() ? W / 2 : 250, meterTop() ? 250 : JK.H - 110, { size: 30, color: Math.floor(t / 5) % 2 ? '#ffffff' : p1.ch.color, stroke: '#000', strokeW: 6 });
     }
     if (g.finishPhase && g.finishPhase.winner === p1 && g.finishPhase.t > 30) {
       const blink = Math.floor(g.frame / 8) % 2;
-      JK.text(ctx, 'GET CLOSE AND PRESS  Q  FOR YOUR FINISHER', W / 2, JK.H - 110, { size: 34, color: blink ? '#ff3040' : '#ffd27a', stroke: '#000', strokeW: 6, spacing: 2 });
+      JK.text(ctx, touch() ? 'GET CLOSE AND TAP  DOMAIN  FOR YOUR FINISHER' : 'GET CLOSE AND PRESS  Q  FOR YOUR FINISHER', W / 2, JK.H - 110, { size: 34, color: blink ? '#ff3040' : '#ffd27a', stroke: '#000', strokeW: 6, spacing: 2 });
       JK.text(ctx, '(or strike them to end it)', W / 2, JK.H - 78, { size: 20, font: JK.FONT_UI, color: '#ddd', stroke: '#000', strokeW: 4 });
     }
     // controls reminder at the start of the first round
@@ -221,13 +225,23 @@ JK.HUD = (function () {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(W / 2 - 400, 128, 800, 58);
-      JK.text(ctx, 'J K L attack · U I O techniques · SPACE block · SHIFT dash · H throw · Q domain · ESC moves', W / 2, 146, { size: 19, font: JK.FONT_UI, color: '#f0e6d8', weight: 'bold' });
-      JK.text(ctx, 'E during a special = AMPLIFY  ·  → + SPACE while comboed = BREAKER  ·  Just Guard then K = counter', W / 2, 170, { size: 16, font: JK.FONT_UI, color: '#ffd27a', weight: 'bold' });
+      if (touch()) {
+        // below the relocated meters; wording matches the on-screen buttons
+        const ry = meterTop() ? 196 : 128;
+        ctx.fillRect(W / 2 - 400, ry, 800, 64);
+        JK.text(ctx, 'Stick: move · jump · crouch  ·  hold BLOCK (+ ↓ for lows)  ·  U I O techniques  ·  tap the timer to pause', W / 2, ry + 20, { size: 20, font: JK.FONT_UI, color: '#f0e6d8', weight: 'bold' });
+        JK.text(ctx, 'AMP during a special  ·  → + BLOCK while comboed = BREAKER  ·  DOMAIN needs 3 bars', W / 2, ry + 46, { size: 18, font: JK.FONT_UI, color: '#ffd27a', weight: 'bold' });
+      } else {
+        ctx.fillRect(W / 2 - 400, 128, 800, 58);
+        JK.text(ctx, 'J K L attack · U I O techniques · SPACE block · SHIFT dash · H throw · Q domain · ESC moves', W / 2, 146, { size: 19, font: JK.FONT_UI, color: '#f0e6d8', weight: 'bold' });
+        JK.text(ctx, 'E during a special = AMPLIFY  ·  → + SPACE while comboed = BREAKER  ·  Just Guard then K = counter', W / 2, 170, { size: 16, font: JK.FONT_UI, color: '#ffd27a', weight: 'bold' });
+      }
       ctx.restore();
     }
     if (g.mode === 'training') {
-      JK.text(ctx, 'TRAINING · TAB dummy: ' + JK.DUMMY_MODES[p2.ctrl.dummyMode || 0] + ' · R reset · C cooldowns ' + (g.noCd ? 'OFF' : 'ON') + ' · ESC menu', W / 2, JK.H - 18, { size: 18, color: '#ccc', stroke: '#000', strokeW: 3, font: JK.FONT_UI });
+      const dummy = JK.DUMMY_MODES[p2.ctrl.dummyMode || 0];
+      if (touch()) JK.text(ctx, 'TRAINING · dummy: ' + dummy + ' · cooldowns ' + (g.noCd ? 'OFF' : 'ON'), W / 2, JK.H - 18, { size: 18, color: '#ccc', stroke: '#000', strokeW: 3, font: JK.FONT_UI });
+      else JK.text(ctx, 'TRAINING · TAB dummy: ' + dummy + ' · R reset · C cooldowns ' + (g.noCd ? 'OFF' : 'ON') + ' · ESC menu', W / 2, JK.H - 18, { size: 18, color: '#ccc', stroke: '#000', strokeW: 3, font: JK.FONT_UI });
       trainingPanel(ctx, g);
     }
   }
@@ -239,10 +253,13 @@ JK.HUD = (function () {
     const T = g.train;
     if (!T) return;
     // input history, newest on top
+    const top = meterTop();
+    const hy = top ? 196 : 180, rows = top ? 9 : 14;
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(14, 180, 150, 14 * 26 + 10);
+    ctx.fillRect(14, hy, 150, rows * 26 + 10);
     T.inputs.forEach((e, i) => {
-      const y = 198 + i * 26;
+      if (i >= rows) return;
+      const y = hy + 18 + i * 26;
       const a = 1 - i / 16;
       JK.text(ctx, String(Math.min(99, e.n)), 44, y, { size: 16, align: 'right', font: JK.FONT_UI, color: '#888', alpha: a });
       JK.text(ctx, ARROWS[e.dir], 64, y, { size: 22, font: 'sans-serif', color: e.dir === 5 ? '#666' : '#fff', alpha: a });
